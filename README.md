@@ -6,7 +6,7 @@ This game is live on GitHub Pages, so you can play it anytime, anywhere. 🚀
 ---
 
 ## 🌐 Live Demo
-👉 [Play Now](https://<your-username>.github.io/my-game/)
+👉 [Play Now]([https://<your-username>.github.io/my-game/](https://nitesh-shaw-098.github.io/Sky-Jump/))
 
 ---
 
