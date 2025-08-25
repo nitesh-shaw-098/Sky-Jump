@@ -26,4 +26,4 @@ This game is live on GitHub Pages, so you can play it anytime, anywhere. 🚀
 ## 🛠️ How to Play / Run
 1. Clone this repo:
    ```bash
-   git clone https://github.com/<your-username>/my-game.git
+   git clone https://github.com/nitesh-shaw-098/Sky-Jump.git
