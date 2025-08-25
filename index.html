@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Sky Jump Mini‑Game</title>
+  <style>
+    :root{
+      --bg:#0a0f1a; --panel:#0d1b2a; --primary:#64ffda; --accent:#ff6b6b; --text:#e6f1ff; --muted:#8892b0;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:radial-gradient(1200px 600px at 50% -10%, #112240 0%, #0a0f1a 60%);} 
+    body{display:flex;align-items:center;justify-content:center;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;color:var(--text)}
+
+    .frame{width:min(420px,92vw);background:#050910;border-radius:22px;box-shadow:0 10px 30px rgba(0,0,0,.5), inset 0 0 0 2px #223;overflow:hidden;border:2px solid #1b2336}
+    .header{display:flex;align-items:center;gap:10px;padding:14px 16px;background:linear-gradient(180deg,#0f1b2d,#0a0f1a);border-bottom:1px solid #1b2b4a}
+    .logo{width:18px;height:18px;border-radius:4px;background:conic-gradient(#4285F4 0 25%,#34A853 0 50%,#FBBC05 0 75%,#EA4335 0 100%)}
+    .brand{font-weight:700;letter-spacing:.2px}
+
+    .canvasWrap{position:relative;background:linear-gradient(#07121f,#050910);}
+    canvas{display:block;width:100%;height:auto;background:linear-gradient(#061625,#04070e)}
+
+    .hud{position:absolute;inset:0;pointer-events:none;}
+    .score{position:absolute;left:50%;top:8px;transform:translateX(-50%);font-weight:800;text-shadow:0 2px 0 #0007,0 0 10px #00ffd566}
+
+    .badge{position:absolute;left:50%;transform:translateX(-50%);top:618px;padding:6px 12px;border:1px solid #264; border-radius:999px;background:#0b1f2a; color:#9be9d8;font-size:8px;}
+
+    .controls{display:flex;gap:8px;justify-content:center;padding:10px;background:#060b14;border-top:1px solid #101828}
+    .btn{appearance:none;border:none;border-radius:14px;padding:10px 14px;background:#0f2136;color:var(--text);font-weight:600;cursor:pointer;box-shadow:inset 0 0 0 1px #1e3350}
+    .btn:active{transform:translateY(1px)}
+
+    .overlay{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(#0009,#000b);backdrop-filter:blur(2px);}
+    .card{pointer-events:auto;width:88%;max-width:320px;background:linear-gradient(180deg,#0a1b2f,#07101d);border:2px solid #1c2f4d;border-radius:18px;padding:18px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+    .title{font-family:monospace;font-size:18px;letter-spacing:1px;margin:0 0 8px}
+    .offer{font-size:14px;color:#9cc7ff;margin:0 0 12px}
+    .emoji{font-size:64px;line-height:1;filter:drop-shadow(0 6px 0 #0006)}
+    .cta{margin-top:14px;display:inline-block;background:var(--accent);color:#fff;padding:10px 16px;border-radius:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;border:none;cursor:pointer}
+    .tiny{opacity:.7;font-size:11px;margin-top:8px}
+
+    /* Pixel-ish heading for arcade vibe */
+    .marquee{position:absolute;left:50%;top:8px;transform:translateX(-50%);padding:6px 10px;border-radius:10px;background:#061322;border:1px solid #13304e;font-family:monospace; font-weight:800; font-size:12px; letter-spacing:.6px; color:#b7e3ff;display: none;}
+
+    @media (max-width:360px){ .title{font-size:16px}.emoji{font-size:52px} }
+  </style>
+</head>
+<body>
+  <div class="frame" id="app">
+    <div class="header">
+      <div class="logo" aria-hidden="true"></div>
+      <div class="brand" id="brandName">Gemini</div>
+    </div>
+
+    <div class="canvasWrap">
+      <div class="marquee" id="gameTitle">FREE UPGRADE FOR STUDENTS</div>
+      <canvas id="game" width="360" height="560" aria-label="Student Promo Game"></canvas>
+      <div class="hud">
+        <div class="score" id="score">Score: 0</div>
+        <div class="badge">Made with <span style="font-variation-settings:'wght' 800">JS</span> • Mobile friendly</div>
+      </div>
+
+      <div class="overlay" id="startOverlay">
+        <div class="card">
+          <h3 class="title">Tap to Start</h3>
+          <p class="offer" id="offerLine">Jump through gates to earn points.</p>
+          <div class="emoji">😃</div>
+          <button class="cta" id="startBtn">Start</button>
+          <div class="tiny">Tip: Tap / Click / Space</div>
+        </div>
+      </div>
+
+      <div class="overlay" id="endOverlay" style="display:none">
+        <div class="card">
+          <h3 class="title" id="endTitle">GAME OVER</h3>
+          <p class="offer" id="durationText">For 1 year!</p>
+          <div class="emoji">🥹</div>
+          <button class="cta" id="restartBtn">Restart</button>
+          <div class="tiny" id="finalScore">Score: 0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="jumpBtn">Jump ⤴</button>
+      <button class="btn" id="pauseBtn">Pause ⏸</button>
+      <button class="btn" id="soundBtn">Sound 🔊</button>
+    </div>
+  </div>
+
+<script>
+/********************
+ * Quick customization
+ ********************/
+const CONFIG = {
+  BRAND_NAME: 'Sky Jump ☁️',
+  GAME_TITLE: 'Sky Jump ☁️',
+  OFFER_LINE: 'Jump through gates to score points',
+  DURATION_TEXT: 'Try Again!',
+  PIPE_GAP: 140,     // vertical gap between pipes
+  PIPE_SPEED: 2.3,   // horizontal speed
+  GRAVITY: 0.35,
+  JUMP_POWER: -6.6,
+  FLOOR: 520,
+  SOUND: true,
+};
+
+// apply basic UI text
+brandName.textContent = CONFIG.BRAND_NAME;
+gameTitle.textContent = CONFIG.GAME_TITLE;
+offerLine.textContent = CONFIG.OFFER_LINE;
+durationText.textContent = CONFIG.DURATION_TEXT;
+
+/********************
+ * Minimal sound fx
+ ********************/
+const buzz = (freq=440, time=0.08, type='sine') => {
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type; o.frequency.value=freq; o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+time);
+    o.start(); o.stop(ctx.currentTime+time);
+  }catch(e){}
+};
+
+/********************
+ * Game objects
+ ********************/
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W = canvas.width, H = canvas.height;
+
+const DPR = Math.min(2, window.devicePixelRatio||1);
+function resize(){
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.floor(rect.width);
+  const h = Math.floor(w * (H/W));
+  canvas.style.height = h+'px';
+}
+resize();
+addEventListener('resize', resize);
+
+const bird = {x: 80, y: 240, r: 14, vy: 0};
+let pipes = [];
+let score = 0;
+let playing = false, paused = false, dead = false;
+let lastSpawn = 0;
+
+function reset(){
+  bird.x = 80; bird.y = 240; bird.vy = 0; score = 0; pipes = []; lastSpawn=0; paused=false; dead=false;
+  document.getElementById('score').textContent = 'Score: 0';
+}
+
+function spawnPipe(){
+  const minTop = 60; const maxBottom = CONFIG.FLOOR-60; 
+  const center = Math.random()*(maxBottom-minTop-CONFIG.PIPE_GAP)+minTop+CONFIG.PIPE_GAP/2;
+  pipes.push({x: W+20, top: center-CONFIG.PIPE_GAP/2, bottom: center+CONFIG.PIPE_GAP/2, passed:false});
+}
+
+function drawBackground(){
+  // Stars
+  ctx.fillStyle = '#06121f';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#0c2744';
+  for(let i=0;i<40;i++){
+    ctx.fillRect((i*43+tick*0.2)%W, 40+(i*13%260), 2,2);
+  }
+  // Floor
+  ctx.fillStyle = '#09131f';
+  ctx.fillRect(0, CONFIG.FLOOR, W, H-CONFIG.FLOOR);
+  // Conveyor tiles
+  ctx.fillStyle = '#0f2236';
+  for(let x=-((tick*2)%40); x<W; x+=40){ ctx.fillRect(x, CONFIG.FLOOR, 20, 8); }
+}
+
+function drawBird(){
+  // body
+  ctx.beginPath();
+  ctx.arc(bird.x, bird.y, bird.r, 0, Math.PI*2);
+  ctx.fillStyle = '#ffcf5b';
+  ctx.fill();
+  // cap
+  ctx.fillStyle = '#1a2d4a';
+  ctx.fillRect(bird.x-16, bird.y-24, 32, 8);
+  ctx.beginPath(); ctx.moveTo(bird.x-12, bird.y-16); ctx.lineTo(bird.x+12, bird.y-16); ctx.lineTo(bird.x, bird.y-30); ctx.closePath(); ctx.fill();
+  // eyes
+  ctx.fillStyle='#000'; ctx.fillRect(bird.x-5,bird.y-4,3,3); ctx.fillRect(bird.x+2,bird.y-4,3,3);
+}
+
+function drawPipes(){
+  ctx.fillStyle = '#1f436d';
+  pipes.forEach(p=>{
+    // upper
+    ctx.fillRect(p.x, 0, 42, p.top);
+    // lower
+    ctx.fillRect(p.x, p.bottom, 42, CONFIG.FLOOR - p.bottom);
+    // rims
+    ctx.fillStyle = '#2a5a90'; ctx.fillRect(p.x-4, p.top-12, 50, 12); ctx.fillRect(p.x-4, p.bottom, 50, 12); ctx.fillStyle = '#1f436d';
+  });
+}
+
+function collide(){
+  if(bird.y+bird.r >= CONFIG.FLOOR) return true;
+  if(bird.y-bird.r <= 0) return true;
+  for(const p of pipes){
+    const withinX = bird.x+bird.r > p.x && bird.x-bird.r < p.x+42;
+    const hitTop = bird.y - bird.r < p.top;
+    const hitBottom = bird.y + bird.r > p.bottom;
+    if(withinX && (hitTop || hitBottom)) return true;
+  }
+  return false;
+}
+
+let tick = 0;
+function update(){
+  if(!playing || paused) return;
+  tick++;
+  // physics
+  bird.vy += CONFIG.GRAVITY; bird.y += bird.vy;
+
+  // spawn pipes
+  if(tick - lastSpawn > 100){ spawnPipe(); lastSpawn = tick; }
+  // move pipes
+  pipes.forEach(p=> p.x -= CONFIG.PIPE_SPEED);
+  // remove old
+  pipes = pipes.filter(p=> p.x > -60);
+
+  // scoring
+  pipes.forEach(p=>{
+    if(!p.passed && p.x + 42 < bird.x - bird.r){ p.passed = true; score++; document.getElementById('score').textContent = 'Score: '+score; if(CONFIG.SOUND) buzz(720, .06, 'square'); }
+  });
+
+  if(collide()) {
+    dead = true; playing=false; 
+    document.getElementById('finalScore').textContent = 'Score: '+score;
+    document.getElementById('endOverlay').style.display='grid';
+    if(CONFIG.SOUND) buzz(160, .2, 'sawtooth');
+  }
+}
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  drawBackground();
+  drawPipes();
+  drawBird();
+}
+
+function loop(){
+  update();
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+function jump(){ if(!playing||paused||dead) return; bird.vy = CONFIG.JUMP_POWER; if(CONFIG.SOUND) buzz(480,.05,'triangle'); }
+
+// Controls
+startBtn.addEventListener('click', ()=>{ reset(); playing=true; document.getElementById('startOverlay').style.display='none'; });
+restartBtn.addEventListener('click', ()=>{ reset(); playing=true; document.getElementById('endOverlay').style.display='none'; });
+
+jumpBtn.addEventListener('click', jump);
+window.addEventListener('pointerdown', jump);
+window.addEventListener('keydown', (e)=>{ if(e.code==='Space'){ e.preventDefault(); jump(); } });
+
+pauseBtn.addEventListener('click', ()=>{ paused=!paused; pauseBtn.textContent = paused? 'Resume ▶' : 'Pause ⏸'; });
+soundBtn.addEventListener('click', ()=>{ CONFIG.SOUND=!CONFIG.SOUND; soundBtn.textContent = CONFIG.SOUND? 'Sound 🔊' : 'Sound 🔇'; });
+
+// Auto-pause on blur (e.g., switching tabs)
+window.addEventListener('blur', ()=>{ if(playing && !dead){ paused=true; pauseBtn.textContent='Resume ▶'; }});
+
+</script>
+</body>
+</html>
